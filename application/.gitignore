@@ -1,0 +1,8 @@
+#Codeigniter
+logs/*
+!logs/index.html
+!logs/.htaccess
+
+config/config.php
+config/database.php
+config/constants.php

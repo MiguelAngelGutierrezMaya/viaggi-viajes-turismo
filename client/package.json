@@ -1,0 +1,36 @@
+{
+  "name": "backoffice",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build",
+    "lint": "vue-cli-service lint"
+  },
+  "dependencies": {
+    "@tinymce/tinymce-vue": "^3.2.8",
+    "axios": "^1.6.0",
+    "core-js": "^3.6.5",
+    "jquery": "^3.7.1",
+    "v-money": "^0.8.1",
+    "vue": "^2.6.11",
+    "vue-axios": "^3.5.2",
+    "vue-currency-filter": "^5.2.0",
+    "vue-js-modal": "^2.0.1",
+    "vue-meta": "^2.4.0",
+    "vue-notification": "^1.3.20",
+    "vue-router": "^3.2.0",
+    "vue-select": "^3.20.2",
+    "vue-upload-drop-images": "^1.0.7"
+  },
+  "devDependencies": {
+    "@vue/cli-plugin-babel": "~4.4.1",
+    "@vue/cli-plugin-eslint": "~4.4.1",
+    "@vue/cli-plugin-router": "~4.4.1",
+    "@vue/cli-service": "~4.4.1",
+    "babel-eslint": "^10.1.0",
+    "eslint": "^6.7.2",
+    "eslint-plugin-vue": "^6.2.2",
+    "vue-template-compiler": "^2.6.11"
+  }
+}

@@ -1,0 +1,18 @@
+# Codeigniter
+application/config/constants.php
+application/config/database.php
+application/config/config.php
+
+# Logs
+application/logs/*
+!application/logs/index.html
+!application/logs/.htaccess
+
+# Media
+media/*
+
+# Scripts
+scripts/*
+
+# Libraries
+libs/*

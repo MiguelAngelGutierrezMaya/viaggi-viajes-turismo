@@ -1,0 +1,15 @@
+/vendor/
+
+.DS_Store
+
+assets/*
+backoffice/*
+!backoffice/.htaccess
+
+.env
+
+# Viaggi images
+media/
+
+#Codeigniter
+/api/vendor/
