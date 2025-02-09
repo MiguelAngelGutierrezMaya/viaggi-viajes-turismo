@@ -252,6 +252,22 @@
                       Por fechas de reserva
                     </label>
                   </div>
+                  <div class="form-check">
+                    <input v-model="reporte.tipo_fecha" class="form-check-input" type="radio" name="flexRadioDefault"
+                      id="flexRadioDefault3" value="3" />
+                    <label class="form-check-label" for="flexRadioDefault3">
+                      Por comentarios de reservas
+                    </label>
+                  </div>
+                </div>
+                <div class="form-group" v-if="reporte.tipo_fecha == 3">
+                  <label>Estado de la reserva</label>
+                  <select v-model="reporte.estado" class="form-control">
+                    <option value="0">Pendiente</option>
+                    <option value="1">Aprobada</option>
+                    <option value="3">Anulada</option>
+                  </select>
+                  <small class="text-muted">Es posible que debas modificar el excel eliminando reservas duplicadas para cuadrar con el total de reservas que indica el sistema</small>
                 </div>
                 <div class="form-group">
                   <label>Desde</label>
@@ -308,6 +324,7 @@ export default {
       actividades: [],
       reporte: {
         tipo_fecha: 1,
+        estado: 1,
         desde: null,
         hasta: null,
       },
@@ -379,6 +396,7 @@ export default {
         headers: headers,
         params: {
           tipo_fecha: this.reporte.tipo_fecha,
+          estado: this.reporte.estado,
           desde: this.reporte.desde,
           hasta: this.reporte.hasta,
         },

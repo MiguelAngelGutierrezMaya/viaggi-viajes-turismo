@@ -17,6 +17,7 @@ class Reservas extends REST_Controller
         $this->load->model('Model_servicios');
         $this->load->model('Model_agencias');
         $this->load->model('Model_destinos');
+        $this->load->model('Model_comentarios_reservas');
         $this->load->helper('slugs');
 
     }
@@ -1583,10 +1584,16 @@ class Reservas extends REST_Controller
 
         $url = null;
 
-        $reservas = $this->Model_reservas->query_reservas_reporte($data_input["tipo_fecha"], $data_input["desde"], $data_input["hasta"]);
+        if ($data_input["tipo_fecha"] == 3) {
+            $reservas = $this->Model_comentarios_reservas->query_comentarios_reservas_reporte($data_input["desde"], $data_input["hasta"], $data_input["estado"]);
+            $path = "download/reporte_comentarios/" . $data_input["estado"] . "/";
+        } else {
+            $reservas = $this->Model_reservas->query_reservas_reporte($data_input["tipo_fecha"], $data_input["desde"], $data_input["hasta"]);
+            $path = "download/reporte/" . $data_input["tipo_fecha"] . "/";
+        }
 
         if ($reservas["total_reservas"] != 0) {
-            $url = base_url() . "download/reporte/" . $data_input["tipo_fecha"] . "/" . $data_input["desde"] . "/" . $data_input["hasta"] . "/" . encode($valida_token["id_usuario"]);
+            $url = base_url() . $path . $data_input["desde"] . "/" . $data_input["hasta"] . "/" . encode($valida_token["id_usuario"]);
         }
 
         $response = [

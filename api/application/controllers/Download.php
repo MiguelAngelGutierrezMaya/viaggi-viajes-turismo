@@ -11,6 +11,7 @@ class Download extends CI_Controller
         $this->load->model('Model_actividades');
         $this->load->model('Model_servicios');
         $this->load->model('Model_clientes');
+        $this->load->model('Model_comentarios_reservas');
     }
 
     public function voucher($id_reserva_servicio = null)
@@ -429,6 +430,380 @@ class Download extends CI_Controller
 
         $objPHPExcel->setActiveSheetIndex(0)
             ->getColumnDimension('P')->setWidth(10);
+
+        $estiloTituloColumnas = array(
+            'font' => array(
+                'name' => 'Verdana',
+                'bold' => true,
+            ),
+            'borders' => array(
+                'top' => array(
+                    'style' => PHPExcel_Style_Border::BORDER_MEDIUM,
+                    'color' => array(
+                        'rgb' => '51565c',
+                    ),
+                ),
+                'bottom' => array(
+                    'style' => PHPExcel_Style_Border::BORDER_MEDIUM,
+                    'color' => array(
+                        'rgb' => '51565c',
+                    ),
+                ),
+            ),
+            'alignment' => array(
+                'horizontal' => PHPExcel_Style_Alignment::HORIZONTAL_CENTER,
+                'vertical' => PHPExcel_Style_Alignment::VERTICAL_CENTER,
+                'wrap' => true,
+            )
+        );
+
+        $estiloInformacion = new PHPExcel_Style();
+        $estiloInformacion->applyFromArray(
+            array(
+                'font' => array(
+                    'name' => 'Verdana',
+                    'color' => array(
+                        'rgb' => '000000',
+                    ),
+                    'size' => 10,
+                ),
+                'borders' => array(
+                    'allborders' => array(
+                        'style' => PHPExcel_Style_Border::BORDER_THIN,
+                        'color' => array(
+                            'rgb' => '51565c',
+                        ),
+                    ),
+                ),
+                'alignment' => array(
+                    'horizontal' => PHPExcel_Style_Alignment::HORIZONTAL_LEFT,
+                    'vertical' => PHPExcel_Style_Alignment::VERTICAL_CENTER,
+                    'wrap' => true,
+                ),
+            )
+        );
+
+        $objPHPExcel->getActiveSheet()->getStyle('A1:Q2')->applyFromArray($estiloTituloColumnas);
+
+        $objPHPExcel->getActiveSheet()->setSharedStyle($estiloInformacion, "A2:Q" . ($i - 1));
+
+        if (!$permiso) {
+            $objPHPExcel->getActiveSheet()->removeColumn('L');
+            $objPHPExcel->getActiveSheet()->removeColumn('M');
+        }
+
+        $objPHPExcel->getActiveSheet()->setTitle('Reporte');
+
+        $objPHPExcel->setActiveSheetIndex(0);
+
+        $objPHPExcel->getActiveSheet(0)->freezePaneByColumnAndRow(0, 1);
+
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="REPORTE.xlsx"');
+        header('Cache-Control: max-age=0');
+        header("Refresh:0");
+
+        $objWriter = PHPExcel_IOFactory::createWriter($objPHPExcel, 'Excel2007');
+        $objWriter->save('php://output');
+
+        exit;
+
+    }
+
+    public function reporte_comentarios($estado, $desde, $hasta, $id_usuario)
+    {
+
+        if (PHP_SAPI == 'cli') {
+            die('Este archivo solo se puede ver desde un navegador web');
+        }
+
+        $id_usuario = decode($id_usuario);
+
+        $permiso = valida_permiso($id_usuario, 'GREPORTES');
+
+        require_once 'libs/PHPExcel/PHPExcel.php';
+
+        $objPHPExcel = new PHPExcel();
+
+        $objPHPExcel->getProperties()->setCreator("Viaggi")
+            ->setLastModifiedBy("Viaggi")
+            ->setTitle("REPORTES")
+            ->setSubject("REPORTES")
+            ->setDescription("REPORTES")
+            ->setKeywords("REPORTES")
+            ->setCategory("REPORTES");
+
+        $titulosColumnas = array(
+            'Nº',
+            'FECHA REGISTRO',
+            'CODIGO RESERVA',
+            'CODIGO VOUCHER',
+            'CLIENTE',
+            'SERVICIO',
+            'PASAJEROS',
+            'FECHA IDA/ACTIVIDAD',
+            'FECHA REGRESO',
+            'ORIGEN',
+            'DESTINO',
+            'PRECIO NETO',
+            'PRECIO VENTA',
+            'TKT',
+            'PROVEEDOR',
+            'ESTADO',
+            'NOTA'
+        );
+
+        $cantidad_de_columnas_a_crear = count($titulosColumnas);
+        $contador = 0;
+        $letra = 'A';
+        while ($contador < $cantidad_de_columnas_a_crear) {
+            $columnas[$contador] = $letra;
+            $contador++;
+            $letra++;
+        }
+
+        $c = 0;
+        foreach ($columnas as $value) {
+            $objPHPExcel->setActiveSheetIndex(0)
+                ->setCellValue($value . '1', $titulosColumnas[$c]);
+            $c++;
+        }
+
+        $reservas = $this->Model_comentarios_reservas->query_comentarios_reservas_reporte($desde, $hasta, $estado);
+
+        if ($reservas["total_reservas"] != 0) {
+
+            $num = 1;
+            $i = 2;
+            $cont = 1;
+
+            foreach ($reservas["actividades"] as $info_reserva) {
+
+                $valor_reserva = get_valor_reserva($info_reserva->adultos, $info_reserva->ninos, $info_reserva->infantes, $info_reserva->valor_neto, $info_reserva->valor_venta, $info_reserva->valor_neto_ninos, $info_reserva->valor_venta_ninos, $info_reserva->valor_neto_infantes, $info_reserva->valor_venta_infantes);
+
+                $valor_venta = $valor_reserva["valor_venta"];
+
+                $valor_neto = $valor_reserva["valor_neto"];
+
+                $tkt = $valor_venta - $valor_neto;
+
+                $estado = Download::estado_reserva($info_reserva->estado_reserva);
+
+                $num++;
+
+                $objPHPExcel->setActiveSheetIndex(0)
+                    ->setCellValue('A' . $i, $cont)
+                    ->setCellValue('B' . $i, $info_reserva->fecha_reg)
+                    ->setCellValue('C' . $i, $info_reserva->cod_reserva)
+                    ->setCellValue('D' . $i, $info_reserva->cod_voucher)
+                    ->setCellValue('E' . $i, $info_reserva->cliente)
+                    ->setCellValue('F' . $i, $info_reserva->servicio)
+                    ->setCellValue('G' . $i, $info_reserva->adultos + $info_reserva->ninos + $info_reserva->infantes)
+                    ->setCellValue('H' . $i, $info_reserva->fecha_actividad)
+                    ->setCellValue('L' . $i, $valor_neto)
+                    ->setCellValue('M' . $i, $valor_venta)
+                    ->setCellValue('N' . $i, $tkt)
+                    ->setCellValue('P' . $i, $estado)
+                    ->setCellValue('Q' . $i, $info_reserva->nota);
+
+                $cont++;
+                $i++;
+
+            }
+
+            foreach ($reservas["paquetes"] as $info_reserva) {
+
+                $tkt = $info_reserva->valor_venta - $info_reserva->valor_neto;
+
+                $estado = Download::estado_reserva($info_reserva->estado_reserva);
+
+                $num++;
+
+                $objPHPExcel->setActiveSheetIndex(0)
+                    ->setCellValue('A' . $i, $cont)
+                    ->setCellValue('B' . $i, $info_reserva->fecha_reg)
+                    ->setCellValue('C' . $i, $info_reserva->cod_reserva)
+                    ->setCellValue('D' . $i, $info_reserva->cod_voucher)
+                    ->setCellValue('E' . $i, $info_reserva->cliente)
+                    ->setCellValue('F' . $i, $info_reserva->servicio)
+                    ->setCellValue('G' . $i, $info_reserva->pasajeros)
+                    ->setCellValue('H' . $i, $info_reserva->fecha_ida)
+                    ->setCellValue('I' . $i, $info_reserva->fecha_regreso)
+                    ->setCellValue('J' . $i, $info_reserva->origen)
+                    ->setCellValue('K' . $i, $info_reserva->destino)
+                    ->setCellValue('L' . $i, $permiso ? $info_reserva->valor_neto : '')
+                    ->setCellValue('M' . $i, $info_reserva->valor_venta)
+                    ->setCellValue('N' . $i, $tkt)
+                    ->setCellValue('O' . $i, $info_reserva->proveedor)
+                    ->setCellValue('P' . $i, $estado)
+                    ->setCellValue('Q' . $i, $info_reserva->nota);
+
+                $cont++;
+                $i++;
+
+            }
+
+            foreach ($reservas["hoteles"] as $info_reserva) {
+
+                $tkt = $info_reserva->valor_venta - $info_reserva->valor_neto;
+
+                $estado = Download::estado_reserva($info_reserva->estado_reserva);
+
+                $num++;
+
+                $objPHPExcel->setActiveSheetIndex(0)
+                    ->setCellValue('A' . $i, $cont)
+                    ->setCellValue('B' . $i, $info_reserva->fecha_reg)
+                    ->setCellValue('C' . $i, $info_reserva->cod_reserva)
+                    ->setCellValue('D' . $i, $info_reserva->cod_voucher)
+                    ->setCellValue('E' . $i, $info_reserva->cliente)
+                    ->setCellValue('F' . $i, "HOSPEDAJE: " . $info_reserva->servicio)
+                    ->setCellValue('G' . $i, $info_reserva->pasajeros)
+                    ->setCellValue('H' . $i, $info_reserva->fecha_ida)
+                    ->setCellValue('L' . $i, $permiso ? $info_reserva->valor_neto : '')
+                    ->setCellValue('M' . $i, $info_reserva->valor_venta)
+                    ->setCellValue('N' . $i, $tkt)
+                    ->setCellValue('P' . $i, $estado)
+                    ->setCellValue('Q' . $i, $info_reserva->nota);
+
+                $cont++;
+                $i++;
+
+            }
+
+            foreach ($reservas["tiquetes"] as $info_reserva) {
+
+                $tkt = $info_reserva->valor_venta - $info_reserva->valor_neto;
+
+                $estado = Download::estado_reserva($info_reserva->estado_reserva);
+
+                $num++;
+
+                $objPHPExcel->setActiveSheetIndex(0)
+                    ->setCellValue('A' . $i, $cont)
+                    ->setCellValue('B' . $i, $info_reserva->fecha_reg)
+                    ->setCellValue('C' . $i, $info_reserva->cod_reserva)
+                    ->setCellValue('D' . $i, $info_reserva->cod_voucher)
+                    ->setCellValue('E' . $i, $info_reserva->cliente)
+                    ->setCellValue('F' . $i, $info_reserva->servicio)
+                    ->setCellValue('G' . $i, $info_reserva->pasajeros)
+                    ->setCellValue('H' . $i, $info_reserva->fecha_ida)
+                    ->setCellValue('I' . $i, $info_reserva->fecha_regreso)
+                    ->setCellValue('J' . $i, $info_reserva->origen)
+                    ->setCellValue('K' . $i, $info_reserva->destino)
+                    ->setCellValue('L' . $i, $permiso ? $info_reserva->valor_neto : '')
+                    ->setCellValue('M' . $i, $info_reserva->valor_venta)
+                    ->setCellValue('N' . $i, $tkt)
+                    ->setCellValue('O' . $i, $info_reserva->proveedor)
+                    ->setCellValue('P' . $i, $estado)
+                    ->setCellValue('Q' . $i, $info_reserva->nota);
+
+                $cont++;
+                $i++;
+
+            }
+
+            foreach ($reservas["asistencias"] as $info_reserva) {
+
+                $tkt = $info_reserva->valor_venta - $info_reserva->valor_neto;
+
+                $estado = Download::estado_reserva($info_reserva->estado_reserva);
+
+                $num++;
+
+                $objPHPExcel->setActiveSheetIndex(0)
+                    ->setCellValue('A' . $i, $cont)
+                    ->setCellValue('B' . $i, $info_reserva->fecha_reg)
+                    ->setCellValue('C' . $i, $info_reserva->cod_reserva)
+                    ->setCellValue('D' . $i, $info_reserva->cod_voucher)
+                    ->setCellValue('E' . $i, $info_reserva->cliente)
+                    ->setCellValue('F' . $i, $info_reserva->servicio)
+                    ->setCellValue('G' . $i, $info_reserva->pasajeros)
+                    ->setCellValue('H' . $i, $info_reserva->fecha_ida)
+                    ->setCellValue('I' . $i, $info_reserva->fecha_regreso)
+                    ->setCellValue('J' . $i, $info_reserva->origen)
+                    ->setCellValue('K' . $i, $info_reserva->destino)
+                    ->setCellValue('L' . $i, $permiso ? $info_reserva->valor_neto : '')
+                    ->setCellValue('M' . $i, $info_reserva->valor_venta)
+                    ->setCellValue('N' . $i, $tkt)
+                    ->setCellValue('O' . $i, $info_reserva->proveedor)
+                    ->setCellValue('P' . $i, $estado)
+                    ->setCellValue('Q' . $i, $info_reserva->nota);
+
+                $cont++;
+                $i++;
+
+            }
+
+            foreach ($reservas["otros"] as $info_reserva) {
+
+                $tkt = $info_reserva->valor_venta - $info_reserva->valor_neto;
+
+                $estado = Download::estado_reserva($info_reserva->estado_reserva);
+
+                $num++;
+
+                $objPHPExcel->setActiveSheetIndex(0)
+                    ->setCellValue('A' . $i, $cont)
+                    ->setCellValue('B' . $i, $info_reserva->fecha_reg)
+                    ->setCellValue('C' . $i, $info_reserva->cod_reserva)
+                    ->setCellValue('D' . $i, $info_reserva->cod_voucher)
+                    ->setCellValue('E' . $i, $info_reserva->cliente)
+                    ->setCellValue('F' . $i, $info_reserva->servicio)
+                    ->setCellValue('L' . $i, $info_reserva->valor_neto)
+                    ->setCellValue('M' . $i, $info_reserva->valor_venta)
+                    ->setCellValue('N' . $i, $tkt)
+                    ->setCellValue('P' . $i, $estado)
+                    ->setCellValue('Q' . $i, $info_reserva->nota);
+
+                $cont++;
+                $i++;
+
+            }
+
+        }
+
+        $objPHPExcel->setActiveSheetIndex(0)
+            ->getColumnDimension('A')->setWidth(5);
+
+        $objPHPExcel->setActiveSheetIndex(0)
+            ->getColumnDimension('B')->setWidth(21);
+
+        for ($l = 'C'; $l <= 'D'; $l++) {
+            $objPHPExcel->setActiveSheetIndex(0)
+                ->getColumnDimension($l)->setWidth(15);
+        }
+
+        $objPHPExcel->setActiveSheetIndex(0)
+            ->getColumnDimension('E')->setWidth(45);
+
+        $objPHPExcel->setActiveSheetIndex(0)
+            ->getColumnDimension('F')->setWidth(35);
+
+        $objPHPExcel->setActiveSheetIndex(0)
+            ->getColumnDimension('G')->setWidth(15);
+
+        $objPHPExcel->setActiveSheetIndex(0)
+            ->getColumnDimension('H')->setWidth(15);
+
+        for ($l = 'J'; $l <= 'K'; $l++) {
+            $objPHPExcel->setActiveSheetIndex(0)
+                ->getColumnDimension($l)->setWidth(35);
+        }
+
+        for ($l = 'L'; $l <= 'M'; $l++) {
+            $objPHPExcel->setActiveSheetIndex(0)
+                ->getColumnDimension($l)->setWidth(15);
+        }
+
+        $objPHPExcel->setActiveSheetIndex(0)
+            ->getColumnDimension('N')->setWidth(35);
+
+        $objPHPExcel->setActiveSheetIndex(0)
+            ->getColumnDimension('P')->setWidth(10);
+
+        $objPHPExcel->setActiveSheetIndex(0)
+            ->getColumnDimension('Q')->setWidth(35);
 
         $estiloTituloColumnas = array(
             'font' => array(
